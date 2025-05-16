@@ -1,0 +1,2 @@
+# Grant everyone read/write access to /dev/musedacled
+KERNEL=="musedacled", MODE="0666"

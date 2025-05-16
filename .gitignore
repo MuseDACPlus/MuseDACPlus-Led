@@ -1,52 +1,69 @@
-# Prerequisites
-*.d
-
-# Object files
+# Kernel build artifacts
 *.o
 *.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
+*.mod.c
+*.mod
+*.order
+*.symvers
 *.cmd
+
+# Auto-generated DTB overlays
+*.dtbo
+*.dtb
+
+# Kernel build directories
+.*.o.d
 .tmp_versions/
-modules.order
+
+# Build output
 Module.symvers
-Mkfile.old
-dkms.conf
+modules.order
+
+# Logs and editor/IDE files
+*.log
+*.swp
+*.swo
+*.bak
+*~
+.*.sw?
+.tags
+.idea/
+.vscode/
+
+# Compiled userland utilities
+/usr/bin/musedacled-install
+/usr/bin/musedacled-bind.sh
+/usr/bin/ledtest
+
+# Deb build artifacts
+*.deb
+*.changes
+*.build
+*.buildinfo
+*.tar.gz
+
+# Package output and DEBIAN control files that should be rebuilt
+/debian/
+DEBIAN/*
+!DEBIAN/control
+!DEBIAN/postinst
+!DEBIAN/prerm
+!DEBIAN/postrm
+!DEBIAN/musedacled.dkms
+!DEBIAN/rules
+
+# Source output
+/lib/modules/*/extra/musedacled.ko
+
+# Unit test output
+*.out
+
+# Backup files
+*.old
+*.orig
+
+# General ignores
+tags
+TAGS
+core
+core.*

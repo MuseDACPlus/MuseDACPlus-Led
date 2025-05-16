@@ -1,8 +1,8 @@
+#include <linux/module.h> 
 #include <linux/string.h>
-#include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/kernel.h>
 #include <linux/types.h>
-#include <linux/uaccess.h>
 #include "ledparser.h"
 
 struct named_color {
@@ -11,23 +11,23 @@ struct named_color {
 };
 
 static struct named_color named_colors[] = {
-    { "red",     255,   0,   0 },
-    { "green",     0, 255,   0 },
-    { "blue",      0,   0, 255 },
-    { "yellow",  255, 255,   0 },
-    { "cyan",      0, 255, 255 },
-    { "magenta", 255,   0, 255 },
-    { "white",   255, 255, 255 },
-    { "black",     0,   0,   0 },
-    { "orange",  255, 165,   0 },
-    { "purple",  128,   0, 128 },
-    { "pink",    255, 192, 203 },
+    { "red", 255, 0, 0 },
+    { "green", 0, 255, 0 },
+    { "blue", 0, 0, 255 },
+    { "yellow", 255, 255, 0 },
+    { "cyan", 0, 255, 255 },
+    { "magenta", 255, 0, 255 },
+    { "white", 255, 255, 255 },
+    { "black", 0, 0, 0 },
+    { "orange", 255, 165, 0 },
+    { "purple", 128, 0, 128 },
+    { "pink", 255, 192, 203 },
     { NULL, 0, 0, 0 }
 };
 
 int parse_led_colors(const char *input, u8 **out_buf, size_t *out_len)
 {
-    char *buf, *tok, *saveptr;
+    char *buf, *token, *context;
     int led_count = 0;
     size_t i, max_leds = 32;
     u8 *spi_buf;
@@ -42,33 +42,41 @@ int parse_led_colors(const char *input, u8 **out_buf, size_t *out_len)
         return -ENOMEM;
     }
 
-    memset(spi_buf, 0x00, 4); // start frame
+    memset(spi_buf, 0x00, 4); // Start frame
 
-    tok = strtok_r(buf, " \t\n", &saveptr);
-    while (tok && led_count < max_leds) {
+    context = buf;
+    while ((token = strsep(&context, " \t\n")) != NULL && *token && led_count < max_leds) {
         u8 r = 0, g = 0, b = 0, brightness = 31;
+        int err = 0;
 
-        if (tok[0] == '#' || strncmp(tok, "0x", 2) == 0) {
-            u32 val = 0;
-            char *colon = strchr(tok, ':');
+        // Hex notation
+        if (token[0] == '#' || strncmp(token, "0x", 2) == 0) {
+            char *colon = strchr(token, ':');
             if (colon) {
                 *colon = '\0';
-                kstrtou8(colon + 1, 10, &brightness);
-                if (brightness > 31) brightness = 31;
+                err = kstrtou8(colon + 1, 10, &brightness);
+                if (err || brightness > 31) brightness = 31;
             }
-            kstrtou32(tok + (tok[0] == '#' ? 1 : 2), 16, &val);
+
+            u32 val = 0;
+            err = kstrtou32(token + (token[0] == '#' ? 1 : 2), 16, &val);
+            if (err) continue;
+
             r = (val >> 16) & 0xFF;
             g = (val >> 8) & 0xFF;
             b = val & 0xFF;
-        } else {
-            char *colon = strchr(tok, ':');
+        }
+        // Named color
+        else {
+            char *colon = strchr(token, ':');
             if (colon) {
                 *colon = '\0';
-                kstrtou8(colon + 1, 10, &brightness);
-                if (brightness > 31) brightness = 31;
+                err = kstrtou8(colon + 1, 10, &brightness);
+                if (err || brightness > 31) brightness = 31;
             }
+
             for (i = 0; named_colors[i].name; i++) {
-                if (strcmp(tok, named_colors[i].name) == 0) {
+                if (strcmp(token, named_colors[i].name) == 0) {
                     r = named_colors[i].r;
                     g = named_colors[i].g;
                     b = named_colors[i].b;
@@ -84,10 +92,9 @@ int parse_led_colors(const char *input, u8 **out_buf, size_t *out_len)
         spi_buf[i + 3] = r;
 
         led_count++;
-        tok = strtok_r(NULL, " \t\n", &saveptr);
     }
 
-    memset(&spi_buf[4 + led_count * 4], 0xFF, 4); // end frame
+    memset(&spi_buf[4 + led_count * 4], 0xFF, 4); // End frame
 
     *out_buf = spi_buf;
     *out_len = 4 + led_count * 4 + 4;
@@ -95,3 +102,6 @@ int parse_led_colors(const char *input, u8 **out_buf, size_t *out_len)
     kfree(buf);
     return 0;
 }
+
+MODULE_LICENSE("MIT");
+EXPORT_SYMBOL(parse_led_colors);

@@ -1,7 +1,9 @@
 Package: musedacled
 Version: 1.0
+Architecture: all
+Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
 Section: misc
 Priority: optional
-Architecture: arm64
-Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
-Description: Kernel driver and installer for musedacled HAT (SPI5 LED driver)
+Depends: kmod, udev, systemd
+Description: MuseDAC LED SPI5 driver for Raspberry Pi
+ Custom kernel module to control SK9822 LEDs using SPI5.
