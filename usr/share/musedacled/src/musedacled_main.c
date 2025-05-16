@@ -14,7 +14,7 @@
 
 #define DEVICE_NAME "musedacled"
 #define CLASS_NAME  "musedac"
-#define DRIVER_VERSION "1.0.11"
+#define DRIVER_VERSION "1.0.12"
 
 static int major;
 static struct class *musedacled_class;
