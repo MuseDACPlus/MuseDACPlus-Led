@@ -103,5 +103,5 @@ int parse_led_colors(const char *input, u8 **out_buf, size_t *out_len)
     return 0;
 }
 
-MODULE_LICENSE("MIT");
 EXPORT_SYMBOL(parse_led_colors);
+MODULE_LICENSE("GPL");

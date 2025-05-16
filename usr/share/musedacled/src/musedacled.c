@@ -75,6 +75,7 @@ static ssize_t musedacled_write(struct file *file, const char __user *buf, size_
     if (!spi_dev)
         return -ENODEV;
 
+    // Allocate +1 for null terminator
     kbuf = kmalloc(len + 1, GFP_KERNEL);
     if (!kbuf)
         return -ENOMEM;
@@ -88,21 +89,27 @@ static ssize_t musedacled_write(struct file *file, const char __user *buf, size_
     if (isprint(kbuf[0])) {
         u8 *spi_buf;
         size_t spi_len;
+
         if (parse_led_colors(kbuf, &spi_buf, &spi_len) == 0) {
-            spi_write(spi_dev, spi_buf, spi_len);
+            ret = spi_write(spi_dev, spi_buf, spi_len);
             kfree(spi_buf);
-            ret = len;
+
+            if (ret == 0)
+                ret = len; // Success: report full user write length
         } else {
+            pr_warn("musedacled: invalid color string: %s\n", kbuf);
             ret = -EINVAL;
         }
     } else {
-        spi_write(spi_dev, kbuf, len);
-        ret = len;
+        ret = spi_write(spi_dev, kbuf, len);
+        if (ret == 0)
+            ret = len;
     }
 
     kfree(kbuf);
     return ret;
 }
+
 
 static const struct file_operations fops = {
     .owner = THIS_MODULE,
@@ -110,6 +117,13 @@ static const struct file_operations fops = {
     .release = musedacled_release,
     .write = musedacled_write,
 };
+
+static char *musedacled_devnode(const struct device *dev, umode_t *mode)
+{
+    if (mode)
+        *mode = 0666;  // or 0660 for group-based access
+    return NULL;
+}
 
 // SPI probe: sets up char device
 static int musedacled_probe(struct spi_device *spi)
@@ -141,6 +155,8 @@ static int musedacled_probe(struct spi_device *spi)
     musedacled_class = class_create(CLASS_NAME);
     if (IS_ERR(musedacled_class))
         return PTR_ERR(musedacled_class);
+
+    musedacled_class->devnode = musedacled_devnode;
 
     device_create(musedacled_class, NULL, dev, NULL, DEVICE_NAME);
     dev_info(&spi->dev, "musedacled: bound to SPI5\n");
