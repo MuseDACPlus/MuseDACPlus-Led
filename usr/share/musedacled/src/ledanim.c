@@ -2,114 +2,142 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/spi/spi.h>
+#include <linux/jiffies.h>
+#include <linux/string.h>
 #include "ledanim.h"
 
+static struct spi_device *anim_spi      = NULL;
+static u8               *base_frame    = NULL;
+static size_t            frame_len     = 0;
+static unsigned long     delay_ms      = 0;
+static unsigned int     anim_t         = 0;
+static bool             anim_state     = false;
+static enum anim_mode   current_mode   = ANIM_NONE;
 static struct delayed_work anim_work;
-enum anim_mode current_mode = ANIM_NONE;
-static struct spi_device *anim_spi;
-static u8 *base_frame;
-static size_t frame_len;
-static unsigned long delay_ms;
-static bool state = false;
-static unsigned int t = 0;
 
+/* Animation worker: one step, then reschedule */
 static void anim_worker(struct work_struct *work)
 {
-    //pr_info("anim_worker: frame_len=%zu\n", frame_len);
+    u8 *frame;
+    size_t i;
 
-    if (!base_frame || !anim_spi || frame_len < 12) {
-        pr_err("musedacled: animation worker abort (invalid buffer)\n");
+    if (!base_frame || !anim_spi || frame_len < 8)
         return;
-    }
 
-    u8 *frame = kzalloc(frame_len, GFP_KERNEL);
-    if (!frame) return;
-    memcpy(frame, base_frame, frame_len);
+    /* Copy the base frame so we can tweak brightness */
+    frame = kmemdup(base_frame, frame_len, GFP_KERNEL);
+    if (!frame)
+        return;
 
-    for (size_t i = 4; i < frame_len - 4; i += 4) {
-        u8 base = base_frame[i] & 0x1F;
-        u8 brightness = base;
+    for (i = 4; i + 3 < frame_len - 4; i += 4) {
+        u8 base_b = frame[i] & 0x1F;
+        u8 bright = base_b;
+        unsigned int step = anim_t % 62;
 
         switch (current_mode) {
-            case ANIM_BLINK:
-                brightness = state ? base : 0;
-                break;
-            case ANIM_FADE:
-                brightness = 16 + (15 * abs(31 - (t % 62))) / 31;
-                break;
-            case ANIM_PULSE:
-                brightness = (t % 62 < 31) ? (t % 31) : (62 - (t % 62));
-                break;
-            default:
-                break;
+        case ANIM_BLINK:
+            bright = anim_state ? base_b : 0;
+            break;
+        case ANIM_FADE:
+        case ANIM_PULSE:
+            /* Triangle wave for both fade and pulse */
+            bright = (step < 31) ? step : (62 - step);
+            break;
+        default:
+            break;
         }
 
-        frame[i] = 0xE0 | (brightness & 0x1F);
+        frame[i] = 0xE0 | (bright & 0x1F);
     }
 
     spi_write(anim_spi, frame, frame_len);
     kfree(frame);
 
-    state = !state;
-    t++;
+    anim_state = !anim_state;
+    anim_t++;
     schedule_delayed_work(&anim_work, msecs_to_jiffies(delay_ms));
 }
 
+/* Initialize animation system (call from probe) */
 int ledanim_init(struct spi_device *spi)
 {
     anim_spi = spi;
     INIT_DELAYED_WORK(&anim_work, anim_worker);
     return 0;
 }
+EXPORT_SYMBOL(ledanim_init);
 
+/* Stop any running animation (call from remove or before static color) */
 void ledanim_stop(void)
 {
     cancel_delayed_work_sync(&anim_work);
     kfree(base_frame);
-    base_frame = NULL;
-    current_mode = ANIM_NONE;
-    t = 0;
-    state = false;
+    base_frame    = NULL;
+    frame_len     = 0;
+    current_mode  = ANIM_NONE;
+    anim_t        = 0;
+    anim_state    = false;
 }
+EXPORT_SYMBOL(ledanim_stop);
 
-int ledanim_start(enum anim_mode mode, unsigned long d_ms, const u8 *frame, size_t len)
+/* Start a new animation */
+int ledanim_start(enum anim_mode mode,
+                  unsigned long period_ms,
+                  const u8 *frame,
+                  size_t len)
 {
-    pr_info("musedacled: starting anim mode %d, delay %lu, frame_len %zu\n", mode, d_ms, len);
+    u8 *dup;
+    unsigned long step_ms;
 
+    /* Stop old */
     ledanim_stop();
 
-    base_frame = kmemdup(frame, len, GFP_KERNEL);
-    if (!base_frame)
+    /* Copy base frame */
+    dup = kmemdup(frame, len, GFP_KERNEL);
+    if (!dup)
         return -ENOMEM;
+    base_frame = dup;
+    frame_len  = len;
 
-    frame_len = len;
+    /* Compute per‐step delay */
+    if (mode == ANIM_BLINK) {
+        delay_ms = period_ms;
+    } else {
+        step_ms = period_ms / 62;
+        if (!step_ms) step_ms = 1;
+        delay_ms = step_ms;
+    }
 
     current_mode = mode;
-    delay_ms = d_ms;
+    anim_t       = 0;
+    anim_state   = false;
+
+    pr_info("ledanim: start mode=%d total=%lums step=%lums frame_len=%zu\n",
+            mode, period_ms, delay_ms, len);
+
     schedule_delayed_work(&anim_work, 0);
     return 0;
 }
+EXPORT_SYMBOL(ledanim_start);
 
+/* Return true if an animation is currently running */
 bool ledanim_is_active(void)
 {
-    return (current_mode != ANIM_NONE);
+    return current_mode != ANIM_NONE;
 }
+EXPORT_SYMBOL(ledanim_is_active);
 
+/* Swap in a new base frame while animating */
 int ledanim_update_frame(const u8 *frame, size_t len)
 {
-    u8 *new = kmemdup(frame, len, GFP_KERNEL);
-    if (!new) return -ENOMEM;
+    u8 *newbuf = kmemdup(frame, len, GFP_KERNEL);
+    if (!newbuf)
+        return -ENOMEM;
     kfree(base_frame);
-    base_frame = new;
-    frame_len  = len;
+    base_frame  = newbuf;
+    frame_len   = len;
     return 0;
 }
-
-
-EXPORT_SYMBOL(ledanim_is_active);
-EXPORT_SYMBOL(ledanim_init);
-EXPORT_SYMBOL(ledanim_start);
-EXPORT_SYMBOL(ledanim_stop);
 EXPORT_SYMBOL(ledanim_update_frame);
 
 MODULE_LICENSE("GPL");
