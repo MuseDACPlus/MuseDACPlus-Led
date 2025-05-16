@@ -1,4 +1,4 @@
-MUSEDACLED
+MuseDAC+ LED controller
 
 musedacled is a custom Linux kernel module and Raspberry Pi HAT driver for controlling SK9822 (APA102-compatible) addressable RGB LEDs via the SPI5 interface. It provides a simple character-device interface for setting static colors and running animations directly from userspace.
 
