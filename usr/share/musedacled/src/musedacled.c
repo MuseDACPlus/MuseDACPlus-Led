@@ -6,6 +6,7 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/mod_devicetable.h>
+#include "ledparser.h"
 
 #define DEVICE_NAME "musedacled"
 #define CLASS_NAME  "musedac"
@@ -76,10 +77,12 @@ static int musedacled_release(struct inode *inode, struct file *file)
 static ssize_t musedacled_write(struct file *file, const char __user *buf, size_t len, loff_t *offset)
 {
     u8 *kbuf;
+    ssize_t ret;
+
     if (!spi_dev)
         return -ENODEV;
 
-    kbuf = kmalloc(len, GFP_KERNEL);
+    kbuf = kmalloc(len + 1, GFP_KERNEL); // +1 for null-termination
     if (!kbuf)
         return -ENOMEM;
 
@@ -87,14 +90,27 @@ static ssize_t musedacled_write(struct file *file, const char __user *buf, size_
         kfree(kbuf);
         return -EFAULT;
     }
+    kbuf[len] = '\0';
 
-    printk(KERN_INFO "musedacled_write: len=%zu first4=%02x %02x %02x %02x\n", len, kbuf[0], kbuf[1], kbuf[2], kbuf[3]);
+    if (isprint(kbuf[0])) {
+        u8 *spi_buf;
+        size_t spi_len;
+        if (parse_led_colors(kbuf, &spi_buf, &spi_len) == 0) {
+            spi_write(spi_dev, spi_buf, spi_len);
+            kfree(spi_buf);
+            ret = len;
+        } else {
+            ret = -EINVAL;
+        }
+    } else {
+        spi_write(spi_dev, kbuf, len);
+        ret = len;
+    }
 
-    spi_write(spi_dev, kbuf, len);
     kfree(kbuf);
-
-    return len;
+    return ret;
 }
+
 
 static const struct file_operations fops = {
     .owner = THIS_MODULE,
