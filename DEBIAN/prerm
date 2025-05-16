@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# prerm - Debian package pre-removal script for musedacled
+#
+# Unloads the musedacled kernel module before removal.
+#
+# Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
+# Version: 1.0
+#
+
+set -e
+
+echo "[prerm] Attempting to unload musedacled kernel module..."
+
+if lsmod | grep -q "^musedacled"; then
+    if modprobe -r musedacled; then
+        echo "[prerm] musedacled module unloaded successfully."
+    else
+        echo "[prerm] WARNING: Failed to unload musedacled. You may need to reboot."
+    fi
+else
+    echo "[prerm] musedacled module not currently loaded. Skipping."
+fi

@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# postrm - Debian package post-removal script for musedacled
+#
+# Removes the SPI5 overlay line from /boot/firmware/config.txt
+# if it was added during installation.
+#
+# Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
+# Version: 1.0
+#
+
+set -e
+
+CONFIG_FILE="/boot/firmware/config.txt"
+CONFIG_LINE="dtoverlay=spi5-1cs,cs0_pin=255,mosi_pin=14,sclk_pin=15"
+BACKUP_FILE="${CONFIG_FILE}.bak-musedacled"
+
+echo "[postrm] Cleaning up musedacled SPI5 overlay..."
+
+# Only run if config file exists
+if [ -f "$CONFIG_FILE" ]; then
+    if grep -q "^$CONFIG_LINE" "$CONFIG_FILE"; then
+        echo "[postrm] Found SPI5 overlay line. Removing it..."
+        cp "$CONFIG_FILE" "$BACKUP_FILE"
+        sed -i "\|^$CONFIG_LINE\$|d" "$CONFIG_FILE"
+        echo "[postrm] Line removed. Backup saved as $BACKUP_FILE"
+    else
+        echo "[postrm] No matching SPI5 overlay line found. Nothing to remove."
+    fi
+else
+    echo "[postrm] Config file not found at $CONFIG_FILE. Skipping."
+fi

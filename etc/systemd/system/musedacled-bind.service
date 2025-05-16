@@ -1,0 +1,10 @@
+[Unit]
+Description=Bind SPI5.0 to musedacled driver
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/musedacled-bind.sh
+
+[Install]
+WantedBy=multi-user.target

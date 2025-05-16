@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# postinst - Debian package post-installation script for musedacled
+#
+# This script:
+#   - Enables SPI5 on GPIO14/15 using /usr/local/bin/musedacled-install
+#   - Registers and loads the musedacled kernel module
+#   - Ensures the device is ready for use after installation
+#
+# Notes:
+#   - Assumes musedacled-install exists and is executable
+#   - A reboot is typically required after SPI5 overlay changes
+#   - depmod ensures musedacled.ko is properly registered
+#
+# Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
+# Version: 1.0
+#
+
+set -e
+
+# 1) Run the SPI5 enable script
+echo "[postinst] Running musedacled-install..."
+if [ -x /usr/bin/musedacled-install ]; then
+    /usr/bin/musedacled-install
+else
+    echo "[postinst] ERROR: /usr/bin/musedacled-install not found or not executable."
+    exit 1
+fi
+
+# 2) Install the .dtbo overlay
+echo "[postinst] Installing musedacled.dtbo to /boot/firmware/overlays/..."
+if [ -f /usr/share/musedacled/musedacled.dtbo ]; then
+    install -m 0644 /usr/share/musedacled/musedacled.dtbo /boot/firmware/overlays/
+else
+    echo "[postinst] ERROR: /usr/share/musedacled/musedacled.dtbo not found."
+    exit 1
+fi
+
+# 3) Register and load the kernel module
+echo "[postinst] Registering musedacled.ko..."
+depmod -a
+
+echo "[postinst] Loading musedacled module..."
+if modprobe musedacled; then
+    echo "[postinst] musedacled loaded."
+else
+    echo "[postinst] WARNING: Could not load musedacled immediately (reboot may be required)."
+fi
+
+# 4) If SPI5 is up, steal it from spidev
+if [ -e /sys/bus/spi/devices/spi5.0 ]; then
+    echo "[postinst] spi5.0 is present — rebinding to musedacled..."
+    # unbind generic driver (ignore errors if already unbound)
+    echo spi5.0 > /sys/bus/spi/drivers/spidev/unbind 2>/dev/null || true
+    # override and bind to our driver
+    echo musedacled > /sys/bus/spi/devices/spi5.0/driver_override 2>/dev/null || true
+    echo spi5.0    > /sys/bus/spi/drivers/musedacled/bind          2>/dev/null || true
+    echo "[postinst] Done. /dev/musedacled should now exist."
+else
+    echo "[postinst] spi5.0 not present yet; skipping runtime bind (will work after reboot)."
+fi
+
+systemctl daemon-reload
+systemctl enable musedacled-bind.service
+
+# Reload udev so the new rule takes effect
+echo "[postinst] Reloading udev rules for musedacled..."
+udevadm control --reload-rules
+udevadm trigger
+
+exit 0
+

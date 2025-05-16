@@ -1,0 +1,7 @@
+Package: musedacled
+Version: 1.0
+Section: misc
+Priority: optional
+Architecture: arm64
+Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
+Description: Kernel driver and installer for musedacled HAT (SPI5 LED driver)

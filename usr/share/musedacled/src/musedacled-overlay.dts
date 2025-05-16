@@ -1,0 +1,22 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2711";
+
+    fragment@0 {
+        target = <&spi5>;
+        __overlay__ {
+            status = "okay";
+            #address-cells = <1>;
+            #size-cells = <0>;
+            #cs-gpios = <0>; // no CS
+
+            musedacled@0 {
+                compatible = "musedac,led";
+                reg = <0>; // CS0 (must be <0> for spi5.0)
+                spi-max-frequency = <8000000>;
+            };
+        };
+    };
+};

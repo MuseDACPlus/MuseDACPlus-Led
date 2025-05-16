@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# musedacled-install - System setup script for musedacled HAT
+#
+# Enables SPI5 on GPIO14 (MOSI) and GPIO15 (SCLK) by appending
+# a Device Tree overlay to /boot/firmware/config.txt, on Raspberry Pi 4 or 5.
+#
+# Maintainer: Vincent Saydam <vincent@wickedcreations.nl>
+# Version: 1.1
+#
+
+set -e
+
+CONFIG_FILE="/boot/firmware/config.txt"
+CONFIG_LINE="dtoverlay=spi5-1cs,mosi_pin=14,sclk_pin=15"
+
+# Detect model
+MODEL=$(tr -d '\0' < /proc/device-tree/model || echo "Unknown")
+
+echo "[musedacled-install] Detected device: $MODEL"
+
+if echo "$MODEL" | grep -q "Raspberry Pi 4\|Raspberry Pi 5"; then
+    echo "[musedacled-install] Supported model detected. Continuing..."
+else
+    echo "[musedacled-install] WARNING: This script is designed for Raspberry Pi 4 and 5."
+    echo "[musedacled-install] Skipping SPI5 configuration."
+    exit 0
+fi
+
+# Ensure config.txt is updated
+if grep -q "^$CONFIG_LINE" "$CONFIG_FILE"; then
+    echo "[musedacled-install] SPI5 overlay already present in $CONFIG_FILE."
+else
+    echo "[musedacled-install] Adding SPI5 overlay to $CONFIG_FILE."
+    echo "$CONFIG_LINE" | sudo tee -a "$CONFIG_FILE"
+fi
+
+echo "[musedacled-install] Done. Reboot required for changes to take effect."
