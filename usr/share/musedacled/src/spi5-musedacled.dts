@@ -1,0 +1,35 @@
+/dts-v1/;
+/plugin/;
+#include "bcm2711.dtsi"
+#include "dtoverlay-common.dtsi"
+
+/ {
+    compatible = "brcm,bcm2711";
+
+    fragment@0 {
+        target = <&gpio>;
+        __overlay__ {
+            spi5_pins: spi5_pins {
+                brcm,pins     = <14 15>;  /* MOSI, SCLK */
+                brcm,function = <3  3>;   /* ALT3 → SPI5 */
+            };
+        };
+    };
+
+    fragment@1 {
+        target = <&spi5>;
+        __overlay__ {
+            status         = "okay";
+            pinctrl-names  = "default";
+            pinctrl-0      = <&spi5_pins>;
+            spi-3wire;                /* disable MISO */
+            num-cs         = <0>;     /* no CS lines claimed */
+
+            musedacled@0 {
+                compatible           = "musedacled";
+                reg                  = <0>;
+                spi-max-frequency    = <8000000>;
+            };
+        };
+    };
+};

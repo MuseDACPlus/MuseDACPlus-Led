@@ -12,7 +12,7 @@
 set -e
 
 CONFIG_FILE="/boot/firmware/config.txt"
-CONFIG_LINE="dtoverlay=spi5-1cs,mosi_pin=14,sclk_pin=15"
+CONFIG_LINE="dtoverlay=spi5-musedacled"
 
 # Detect model
 MODEL=$(tr -d '\0' < /proc/device-tree/model || echo "Unknown")

@@ -1,4 +1,4 @@
-#!/bin/bash
+/#!/bin/bash
 #
 # postinst - Debian package post-installation script for musedacled
 #
@@ -28,11 +28,11 @@ else
 fi
 
 # 2) Install the .dtbo overlay
-echo "[postinst] Installing musedacled.dtbo to /boot/firmware/overlays/..."
-if [ -f /usr/share/musedacled/musedacled.dtbo ]; then
-    install -m 0644 /usr/share/musedacled/musedacled.dtbo /boot/firmware/overlays/
+echo "[postinst] Installing spi5-musedacled.dtbo to /boot/firmware/overlays/..."
+if [ -f /usr/share/musedacled/spi5-musedacled.dtbo ]; then
+    install -m 0644 /usr/share/musedacled/spi5-musedacled.dtbo /boot/firmware/overlays/
 else
-    echo "[postinst] ERROR: /usr/share/musedacled/musedacled.dtbo not found."
+    echo "[postinst] ERROR: /usr/share/musedacled/spi5-musedacled.dtbo not found."
     exit 1
 fi
 
