@@ -41,8 +41,11 @@ static void anim_worker(struct work_struct *work)
             break;
         case ANIM_FADE:
         case ANIM_PULSE:
-            /* Triangle wave for both fade and pulse */
-            bright = (step < 31) ? step : (62 - step);
+            /* Triangle wave scaled to base brightness */
+            {
+                unsigned int triangle = (step < 31) ? step : (62 - step);
+                bright = (base_b * triangle) / 31;
+            }
             break;
         default:
             break;
