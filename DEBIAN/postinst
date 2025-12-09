@@ -36,7 +36,32 @@ else
     exit 1
 fi
 
-# 3) Register and load the kernel module
+# 3) Build the kernel module
+echo "[postinst] Building musedacled kernel module..."
+cd /usr/share/musedacled/src
+
+# Check for kernel headers
+KVERSION=$(uname -r)
+if [ ! -d "/lib/modules/$KVERSION/build" ]; then
+    echo "[postinst] ERROR: Kernel headers not found for kernel $KVERSION"
+    echo "[postinst] Install with: sudo apt-get install raspberrypi-kernel-headers"
+    exit 1
+fi
+
+# Build the module
+if make clean && make; then
+    echo "[postinst] Module built successfully."
+else
+    echo "[postinst] ERROR: Failed to build kernel module."
+    exit 1
+fi
+
+# Install the module
+echo "[postinst] Installing musedacled.ko..."
+mkdir -p /lib/modules/$KVERSION/extra
+install -m 0644 musedacled.ko /lib/modules/$KVERSION/extra/
+
+# 4) Register and load the kernel module
 echo "[postinst] Registering musedacled.ko..."
 depmod -a
 
