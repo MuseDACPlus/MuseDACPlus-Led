@@ -57,18 +57,31 @@ echo -n "stop" > /dev/musedacled
 BUILD & INSTALLATION
 --------------------
 Prerequisites:
-- Raspberry Pi with SPI5 enabled (GPIO 14/15)
-- Kernel headers installed (linux-headers-$(uname -r))
+- Raspberry Pi 4 Model B (other models may work but are untested)
+- Raspberry Pi OS (Debian-based)
+- Kernel headers installed: sudo apt-get install raspberrypi-kernel-headers
+- Device tree compiler: sudo apt-get install device-tree-compiler
 
-Manual build:
-cd src
+Building the Debian package:
+1. Clone this repository
+2. Run the build script:
+   ./build-package.sh
+3. This will:
+   - Compile the device tree overlay (spi5-musedacled.dtbo)
+   - Create musedacled_1.0_all.deb with proper ownership
+
+Installing:
+sudo dpkg -i musedacled_1.0_all.deb
+sudo reboot  # Required for SPI5 overlay to take effect
+
+After reboot, the module will load automatically and /dev/musedacled will be available.
+
+Manual build (without package):
+cd usr/share/musedacled/src
 make clean && make
 sudo cp musedacled.ko /lib/modules/$(uname -r)/extra/
 sudo depmod
 sudo modprobe musedacled
-
-Debian package:
-sudo dpkg -i musedacled_1.0_all.deb
 
 TROUBLESHOOTING
 ---------------
