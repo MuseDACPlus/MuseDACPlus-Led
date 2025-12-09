@@ -70,8 +70,9 @@ static ssize_t musedacled_write(struct file *file,
     kbuf[len] = '\0';
     arg = strim(kbuf);
 
-    /* STOP command */
-    if (!strncasecmp(arg, "stop", 4) && arg[4]=='\0') {
+    /* STOP command - accept both "stop" and "anim stop" */
+    if ((!strncasecmp(arg, "stop", 4) && arg[4]=='\0') ||
+        (!strncasecmp(arg, "anim stop", 9) && arg[9]=='\0')) {
         pr_info("musedacled: stopping animation\n");
         ledanim_stop();
         goto out;
@@ -201,8 +202,8 @@ static ssize_t musedacled_read(struct file *file,
         "  anim pulse:<ms>        - Linear pulse animation\n"
         "    Example:             echo -n 'anim pulse:500' > /dev/musedacled\n"
         "\n"
-        "  stop                   - Stop current animation\n"
-        "    Example:             echo -n 'stop' > /dev/musedacled\n"
+        "  anim stop              - Stop current animation\n"
+        "    Example:             echo -n 'anim stop' > /dev/musedacled\n"
         "\n"
         "Note: Always use 'echo -n' or 'printf' to avoid trailing newlines\n",
         DRIVER_VERSION,

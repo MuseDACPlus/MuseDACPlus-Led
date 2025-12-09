@@ -23,7 +23,7 @@ echo -n "anim blink:500" > /dev/musedacled
 echo -n "anim fade:1000" > /dev/musedacled
 
 # Stop animation
-echo -n "stop" > /dev/musedacled
+echo -n "anim stop" > /dev/musedacled
 
 # Turn off all LEDs
 echo -n "color black" > /dev/musedacled
@@ -120,7 +120,7 @@ echo -n "anim pulse:500" > /dev/musedacled
 ### Stop Animation
 
 ```bash
-echo -n "stop" > /dev/musedacled
+echo -n "anim stop" > /dev/musedacled
 ```
 Stops any running animation and leaves LEDs at their current state.
 
@@ -348,7 +348,7 @@ echo "color red" > /dev/musedacled
 ### Animation stuck or unresponsive
 Stop the animation and reload the module:
 ```bash
-echo -n "stop" > /dev/musedacled
+echo -n "anim stop" > /dev/musedacled
 sudo rmmod musedacled
 sudo modprobe musedacled
 ```
@@ -418,7 +418,7 @@ TROUBLESHOOTING
 - Permission denied: check udev rule or use sudo
 - No LEDs light: verify SPI5 overlay is active and /dev/spidev5.0 exists
 - Parsing errors: use echo -n or printf to avoid trailing newline
-- Stuck animation: echo -n "stop" > /dev/musedacled; reload module
+- Stuck animation: echo -n "anim stop" > /dev/musedacled; reload module
 
 LICENSE
 -------
