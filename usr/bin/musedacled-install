@@ -12,7 +12,8 @@
 set -e
 
 CONFIG_FILE="/boot/firmware/config.txt"
-CONFIG_LINE="dtoverlay=spi5-musedacled"
+SPI5_CONTROLLER="dtoverlay=spi5-1cs"
+OVERLAY_LINE="dtoverlay=spi5-musedacled"
 
 # Detect model
 MODEL=$(tr -d '\0' < /proc/device-tree/model || echo "Unknown")
@@ -27,12 +28,20 @@ else
     exit 0
 fi
 
-# Ensure config.txt is updated
-if grep -q "^$CONFIG_LINE" "$CONFIG_FILE"; then
-    echo "[musedacled-install] SPI5 overlay already present in $CONFIG_FILE."
+# Enable SPI5 controller (required for SPI5 bus to exist)
+if grep -q "^$SPI5_CONTROLLER" "$CONFIG_FILE"; then
+    echo "[musedacled-install] SPI5 controller already enabled in $CONFIG_FILE."
 else
-    echo "[musedacled-install] Adding SPI5 overlay to $CONFIG_FILE."
-    echo "$CONFIG_LINE" | sudo tee -a "$CONFIG_FILE"
+    echo "[musedacled-install] Enabling SPI5 controller in $CONFIG_FILE."
+    echo "$SPI5_CONTROLLER" | sudo tee -a "$CONFIG_FILE"
+fi
+
+# Add musedacled device overlay
+if grep -q "^$OVERLAY_LINE" "$CONFIG_FILE"; then
+    echo "[musedacled-install] musedacled overlay already present in $CONFIG_FILE."
+else
+    echo "[musedacled-install] Adding musedacled overlay to $CONFIG_FILE."
+    echo "$OVERLAY_LINE" | sudo tee -a "$CONFIG_FILE"
 fi
 
 echo "[musedacled-install] Done. Reboot required for changes to take effect."

@@ -7,6 +7,9 @@ A Linux kernel module and Raspberry Pi HAT driver for controlling SK9822 (APA102
 After installation and reboot:
 
 ```bash
+# Check driver status and see all available commands
+cat /dev/musedacled
+
 # Turn all LEDs red
 echo -n "color red" > /dev/musedacled
 
@@ -44,6 +47,14 @@ echo -n "color black" > /dev/musedacled
 ## Command Reference
 
 All commands are written to `/dev/musedacled`. Use `echo -n` (no newline) or `printf` to avoid parsing errors.
+
+### Get Status and Help
+
+```bash
+cat /dev/musedacled
+```
+
+Returns the current driver state and lists all available commands with examples.
 
 ### Set Static Colors
 
@@ -202,7 +213,28 @@ cat /sys/bus/spi/devices/spi5.0/driver/module/name 2>/dev/null || echo "NOT BOUN
 
 This is the most common issue. Check each step:
 
-**1. Verify kernel module is loaded:**
+**2. Verify kernel module is loaded:**
+```bash
+lsmod | grep musedacled
+```
+
+If not loaded, try loading manually:
+If not loaded, check config.txt:
+```bash
+grep -E "spi5" /boot/firmware/config.txt
+# Should show both:
+# dtoverlay=spi5-1cs
+# dtoverlay=spi5-musedacled
+```
+
+If missing, add them manually:
+```bash
+echo "dtoverlay=spi5-1cs" | sudo tee -a /boot/firmware/config.txt
+echo "dtoverlay=spi5-musedacled" | sudo tee -a /boot/firmware/config.txt
+sudo reboot
+```
+
+**2. Verify kernel module is loaded:**
 ```bash
 lsmod | grep musedacled
 ```
@@ -222,7 +254,7 @@ sudo depmod -a
 sudo modprobe musedacled
 ```
 
-**2. Check if kernel headers were installed:**
+**3. Check if kernel headers were installed:**
 ```bash
 ls /lib/modules/$(uname -r)/build
 ```
@@ -234,7 +266,7 @@ sudo apt-get install raspberrypi-kernel-headers
 
 Then rebuild and reinstall the package.
 
-**3. Verify SPI5 device exists:**
+**4. Verify SPI5 device exists:**
 ```bash
 ls -l /dev/spidev5.0
 dmesg | grep spi5
@@ -249,7 +281,7 @@ grep spi5-musedacled /boot/firmware/config.txt
 ls -l /boot/firmware/overlays/spi5-musedacled.dtbo
 ```
 
-**4. Check driver binding:**
+**5. Check driver binding:**
 ```bash
 # See what driver spi5.0 is using
 cat /sys/bus/spi/devices/spi5.0/driver/module/name 2>/dev/null || echo "No driver bound"
@@ -260,7 +292,7 @@ echo musedacled > /sys/bus/spi/devices/spi5.0/driver_override
 echo spi5.0 > /sys/bus/spi/drivers/musedacled/bind
 ```
 
-**5. Check systemd service:**
+**6. Check systemd service:**
 ```bash
 sudo systemctl status musedacled-bind.service
 sudo systemctl enable musedacled-bind.service

@@ -150,8 +150,80 @@ out:
     return ret;
 }
 
+static ssize_t musedacled_read(struct file *file,
+                               char __user *buf,
+                               size_t len,
+                               loff_t *offset)
+{
+    char *status;
+    size_t status_len;
+    ssize_t ret;
+    enum anim_mode mode;
+    unsigned long period;
+    const char *mode_str;
+
+    /* Only read once */
+    if (*offset > 0)
+        return 0;
+
+    mode = ledanim_get_mode();
+    period = ledanim_get_period_ms();
+
+    switch (mode) {
+    case ANIM_BLINK: mode_str = "blink"; break;
+    case ANIM_FADE:  mode_str = "fade";  break;
+    case ANIM_PULSE: mode_str = "pulse"; break;
+    default:         mode_str = "none";  break;
+    }
+
+    status = kasprintf(GFP_KERNEL,
+        "MuseDAC+ LED Driver v%s\n"
+        "\n"
+        "Current Status:\n"
+        "  Animation: %s\n"
+        "  Period:    %lu ms\n"
+        "  LEDs:      %zu\n"
+        "\n"
+        "Available Commands:\n"
+        "  color <spec>           - Set LED colors\n"
+        "    Named colors:        red, green, blue, yellow, cyan, magenta, white, black\n"
+        "    Hex colors:          #RRGGBB or 0xRRGGBB\n"
+        "    With brightness:     <color>:0-31 (e.g., red:20)\n"
+        "    Multiple LEDs:       color red green blue\n"
+        "    Example:             echo -n 'color red:15 green:10 blue:5' > /dev/musedacled\n"
+        "\n"
+        "  anim blink:<ms>        - Blink animation\n"
+        "    Example:             echo -n 'anim blink:300' > /dev/musedacled\n"
+        "\n"
+        "  anim fade:<ms>         - Smooth fade animation\n"
+        "    Example:             echo -n 'anim fade:1000' > /dev/musedacled\n"
+        "\n"
+        "  anim pulse:<ms>        - Linear pulse animation\n"
+        "    Example:             echo -n 'anim pulse:500' > /dev/musedacled\n"
+        "\n"
+        "  stop                   - Stop current animation\n"
+        "    Example:             echo -n 'stop' > /dev/musedacled\n"
+        "\n"
+        "Note: Always use 'echo -n' or 'printf' to avoid trailing newlines\n",
+        DRIVER_VERSION,
+        mode_str,
+        period,
+        last_color_frame ? ((last_color_frame_len - 8) / 4) : 0
+    );
+
+    if (!status)
+        return -ENOMEM;
+
+    status_len = strlen(status);
+    ret = simple_read_from_buffer(buf, len, offset, status, status_len);
+    kfree(status);
+
+    return ret;
+}
+
 static const struct file_operations fops = {
     .owner = THIS_MODULE,
+    .read  = musedacled_read,
     .write = musedacled_write,
 };
 

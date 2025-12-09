@@ -10,6 +10,7 @@ static struct spi_device *anim_spi      = NULL;
 static u8               *base_frame    = NULL;
 static size_t            frame_len     = 0;
 static unsigned long     delay_ms      = 0;
+static unsigned long     period_ms     = 0;  /* Store original period for read */
 static unsigned int     anim_t         = 0;
 static bool             anim_state     = false;
 static enum anim_mode   current_mode   = ANIM_NONE;
@@ -75,6 +76,7 @@ void ledanim_stop(void)
     base_frame    = NULL;
     frame_len     = 0;
     current_mode  = ANIM_NONE;
+    period_ms     = 0;
     anim_t        = 0;
     anim_state    = false;
 }
@@ -82,7 +84,7 @@ EXPORT_SYMBOL(ledanim_stop);
 
 /* Start a new animation */
 int ledanim_start(enum anim_mode mode,
-                  unsigned long period_ms,
+                  unsigned long period_ms_arg,
                   const u8 *frame,
                   size_t len)
 {
@@ -100,10 +102,11 @@ int ledanim_start(enum anim_mode mode,
     frame_len  = len;
 
     /* Compute per‐step delay */
+    period_ms = period_ms_arg;  /* Store for getter */
     if (mode == ANIM_BLINK) {
-        delay_ms = period_ms;
+        delay_ms = period_ms_arg;
     } else {
-        step_ms = period_ms / 62;
+        step_ms = period_ms_arg / 62;
         if (!step_ms) step_ms = 1;
         delay_ms = step_ms;
     }
@@ -113,7 +116,7 @@ int ledanim_start(enum anim_mode mode,
     anim_state   = false;
 
     pr_info("ledanim: start mode=%d total=%lums step=%lums frame_len=%zu\n",
-            mode, period_ms, delay_ms, len);
+            mode, period_ms_arg, delay_ms, len);
 
     schedule_delayed_work(&anim_work, 0);
     return 0;
@@ -139,5 +142,19 @@ int ledanim_update_frame(const u8 *frame, size_t len)
     return 0;
 }
 EXPORT_SYMBOL(ledanim_update_frame);
+
+/* Get current animation mode */
+enum anim_mode ledanim_get_mode(void)
+{
+    return current_mode;
+}
+EXPORT_SYMBOL(ledanim_get_mode);
+
+/* Get current animation period */
+unsigned long ledanim_get_period_ms(void)
+{
+    return period_ms;
+}
+EXPORT_SYMBOL(ledanim_get_period_ms);
 
 MODULE_LICENSE("GPL");

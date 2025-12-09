@@ -23,4 +23,8 @@ int  ledanim_start(enum anim_mode mode,
 bool ledanim_is_active(void);
 int  ledanim_update_frame(const u8 *frame, size_t len);
 
+/* Get current animation state for read operations */
+enum anim_mode ledanim_get_mode(void);
+unsigned long  ledanim_get_period_ms(void);
+
 #endif /* LEDANIM_H */
